@@ -2,32 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def Huber_score_function(x, c):
-    x = np.array(x)
-    y = np.zeros(x.size)
-    in_c = np.array((np.abs(x)-c) <= 0)
-    
-    y = in_c*x +  ~in_c*c*np.sign(x)
-
-    return y
+def Huber_score_function(x, c): 
+    return np.where((np.abs(x)-c) <= 0, x ,c*np.sign(x))
 
 def Huber_weights_function(x, c):
-    non_zero = np.array(x!=0)
-    return  non_zero*Huber_score_function(x, c)/x + ~non_zero
+    return  np.where(x!=0,Huber_score_function(x, c)/x , 1)
 
 def Tukey_score_function(x, c):
-    x = np.array(x)
-    y = np.zeros(x.size)
-    in_c = np.array((np.abs(x)-c) <= 0)
-    
-    y = in_c*x*(1-(x/c)**2)**2
-
-    return y
-
+    return np.where((np.abs(x)-c) <= 0, x*(1-(x/c)**2)**2 ,0)
 
 def Tukey_weights_function(x, c):
     non_zero = np.array(x!=0)
-    return  non_zero*Tukey_score_function(x, c)/x + ~non_zero
+    return  np.where(x!=0, Tukey_score_function(x, c)/x, 1)
 
 
 def m_estimator_loc(x, mu, sigma, estimator , c, tol, max_iter):
@@ -101,7 +87,7 @@ x = np.random.normal(2,4,n)
 mu0 = np.median(x)
 sigma0 = 1.4826*np.median(np.abs(x-np.median(x)))
 
-mu_mest, sigma_mest = m_estimator(x, mu0, sigma0, estimator="Huber",c=0.1)
+mu_mest, sigma_mest = m_estimator(x, mu0, sigma0, estimator="Huber",c=6)
 
 
 print(mu_mest, sigma_mest)
