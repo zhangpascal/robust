@@ -14,7 +14,7 @@ def Tukey_weights_function(x, c):
     non_zero = np.array(x!=0)
     return  np.where(x!=0, Tukey_score_function(x, c)/x, 1)
 
-def m_estimator(X, y, beta_init, sigma, estimator = "", c=1, tol=1e-6, max_iter=1000):
+def m_estimator(X, y, beta_init, sigma_init, estimator = "", c=1, tol=1e-6, max_iter=1000):
     n, p = X.shape
     
     beta = beta_init
@@ -33,7 +33,7 @@ def m_estimator(X, y, beta_init, sigma, estimator = "", c=1, tol=1e-6, max_iter=
     while i < max_iter:
         i += 1
 
-        weights = weights_function(res/sigma, c)
+        weights = weights_function(res/sigma_init, c)
         W = np.diag(weights)
         
         beta_new = np.linalg.pinv(X.T@W@X)@X.T@W@y
@@ -48,12 +48,13 @@ def m_estimator(X, y, beta_init, sigma, estimator = "", c=1, tol=1e-6, max_iter=
     print(i)
     return beta_new
 
-def s_estimator(X, y, beta_init, sigma, estimator = "", c=1, b=1, tol=1e-6, max_iter=1000):
+def s_estimator(X, y, beta_init, sigma_init, estimator = "", c=1, b=1, tol=1e-6, max_iter=1000):
     
     n, p = X.shape
     
     beta = beta_init
     res = y - X@beta
+    sigma = sigma_init
     i=0
     
     match estimator:
@@ -100,6 +101,45 @@ def mm_estimator(X, y, beta_init, sigma_init, estimator = "", c=1, b=1, tol=1e-6
     
     return beta_new
         
+def mm_estimator2(X, y, beta_init, sigma_init, estimator = "", c=1, b=1, tol=1e-6, max_iter=1000):
+    
+    n, p = X.shape
+    
+    beta = beta_init
+    res = y - X@beta
+    sigma = sigma_init
+    X_plus = np.linalg.pinv(X.T@X)@X.T
+    i=0
+    
+    match estimator:
+        case "Huber":
+            score_function = Huber_score_function
+        case "Tukey":
+            score_function = Tukey_score_function
+        case _:
+            score_function = lambda x, _: x
+    
+    
+    while i < max_iter:
+        i += 1
+        
+        res_pseudo = score_function(res/sigma, c)*sigma
+        
+        sigma = np.linalg.norm(res_pseudo, ord= 2)/(np.sqrt(2*n*c))
+        
+        res_pseudo = score_function(res/sigma, c)*sigma
+        
+        beta_new = beta + X_plus@res_pseudo
+
+        if np.linalg.norm(beta_new-beta, ord= 2) / np.linalg.norm(beta, ord= 2) < tol:
+            break
+            
+        beta = beta_new
+        res = y - X@beta
+    
+    print(i)
+        
+    return beta
 
 n = 10000
 p= 10
@@ -114,10 +154,12 @@ beta_init = np.ones(p+1)
 res = y - X@beta_init
 sigma_init = 1.4826*np.median(np.abs(res-np.median(res, axis=0)), axis= 0)
 
-beta_est_m = m_estimator(X, y, beta_init, sigma_init, "Tukey", c=5)
-beta_est_s, sigma_est_s = s_estimator(X, y, beta_init, sigma_init, "Tukey", c=5)
-beta_est_mm = mm_estimator(X, y, beta_init, sigma_init, "Tukey", c=5)
+beta_est_m = m_estimator(X, y, beta_init, sigma_init, "Tukey", c=10)
+beta_est_s, sigma_est_s = s_estimator(X, y, beta_init, sigma_init, "Tukey", c=10)
+beta_est_mm = mm_estimator(X, y, beta_init, sigma_init, "Tukey", c=10)
+beta_est_mm2 = mm_estimator2(X, y, beta_init, sigma_init, "Tukey", c=10)
 
 print(beta_est_m)
 print(beta_est_s)
 print(beta_est_mm)
+print(beta_est_mm2)
